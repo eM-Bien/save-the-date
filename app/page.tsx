@@ -176,7 +176,6 @@ const PAGE_BG: Record<Phase, string> = {
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
-const STORAGE_KEY = "save-the-date:pick";
 
 function formatDate(value: string) {
   return new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", {
@@ -200,16 +199,6 @@ export default function Home() {
   const nextId = useRef(0);
 
   const canConfirm = Boolean(from && to && to >= from);
-
-  /* keep the draft around so a refresh does not lose it */
-  useEffect(() => {
-    if (!from && !to) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to }));
-    } catch {
-      // ignore: a missing draft is not worth breaking the page over
-    }
-  }, [from, to]);
 
   /** Swap screens behind the heart flood, so the change is never seen. */
   function transitionTo(next: Phase) {
@@ -290,18 +279,6 @@ export default function Home() {
 
   function acceptInvite() {
     if (phase !== "ask" || flooding) return;
-
-    /* bring back whatever was picked last time on this device */
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as { from?: unknown; to?: unknown };
-        if (typeof saved.from === "string") setFrom(saved.from);
-        if (typeof saved.to === "string") setTo(saved.to);
-      }
-    } catch {
-      // storage blocked or holding junk — just start empty
-    }
 
     transitionTo("date");
   }
