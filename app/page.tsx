@@ -141,6 +141,12 @@ const MAX_SCALE = 9;
 type Phase = "ask" | "date" | "done";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+const PAGE_BG: Record<Phase, string> = {
+  ask: "",
+  date: styles.pageLondon,
+  done: styles.pageDone,
+};
+
 const TODAY = new Date().toISOString().slice(0, 10);
 const STORAGE_KEY = "save-the-date:pick";
 
@@ -273,9 +279,11 @@ export default function Home() {
   }
 
   return (
-    <main className={`${styles.page} ${phase === "ask" ? "" : styles.pageLondon}`}>
-      {/* React hoists this to <head>, so London is cached before the flood clears. */}
+    <main className={`${styles.page} ${PAGE_BG[phase]}`}>
+      {/* React hoists these to <head>, so the later backdrops are cached before
+          their flood clears. */}
       <link rel="preload" as="image" href="/bg-london.png" />
+      <link rel="preload" as="image" href="/bg-packing.png" />
 
       <div className={styles.hearts} aria-hidden="true">
         {HEARTS.map((heart, i) => (
@@ -323,12 +331,12 @@ export default function Home() {
       {phase === "done" ? (
         <div className={styles.stage} key="done">
           <TenorGif
-            postId="473400531468754187"
-            aspectRatio={1.15476}
-            href="https://tenor.com/view/jump-peach-goma-peach-and-goma-peach-goma-gif-473400531468754187"
-            label="Jump Peach Goma GIF"
-            searchHref="https://tenor.com/search/jump-gifs"
-            searchLabel="Jump GIFs"
+            postId="3129149807445986683"
+            aspectRatio={1}
+            href="https://tenor.com/view/peach-and-goma-peach-goma-white-cat-grey-cat-gif-3129149807445986683"
+            label="Peach And Goma White Cat GIF"
+            searchHref="https://tenor.com/search/peach+and+goma-gifs"
+            searchLabel="Peach And Goma GIFs"
           />
 
           <h1 className={styles.title}>It&rsquo;s a date!</h1>
@@ -407,12 +415,12 @@ export default function Home() {
       ) : (
         <div className={styles.stage} key="ask">
           <TenorGif
-            postId="17843851"
-            aspectRatio={1.02894}
-            href="https://tenor.com/view/mochi-mochi-peach-cat-kitty-chibi-cute-gif-17843851"
-            label="Mochi Mochi Peach Cat Sticker"
-            searchHref="https://tenor.com/search/mochi+mochi-stickers"
-            searchLabel="Mochi Mochi Stickers"
+            postId="10363911248176285103"
+            aspectRatio={1}
+            href="https://tenor.com/view/peach-peach-and-goma-aww-amazing-yass-gif-10363911248176285103"
+            label="Peach Peach And Goma GIF"
+            searchHref="https://tenor.com/search/peach-gifs"
+            searchLabel="Peach GIFs"
           />
 
           <h1 className={styles.title}>Honey, would you like to go to London with me?</h1>

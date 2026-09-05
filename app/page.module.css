@@ -14,10 +14,15 @@
   image-rendering: pixelated;
 }
 
-/* Second screen: pink London, dimmed so the text on top stays readable
-   against the busy pink skyline. */
+/* Backgrounds per screen, dimmed so the text on top stays readable against
+   the busy pixel art. */
 .pageLondon {
   background-image: linear-gradient(rgba(58, 28, 58, 0.32), rgba(58, 28, 58, 0.32)), url("/bg-london.png");
+}
+
+/* third screen: packing for the trip */
+.pageDone {
+  background-image: linear-gradient(rgba(40, 30, 70, 0.42), rgba(40, 30, 70, 0.42)), url("/bg-packing.png");
 }
 
 /* The swappable screen: question first, then the date picker. */
@@ -465,4 +470,17 @@
   .dateInput:hover {
     transform: none;
   }
+}
+
+/* On the dimmed packing backdrop the plum-on-white-outline treatment goes
+   muddy, so the last screen flips it: white text, dark outline. */
+.pageDone .title,
+.pageDone .chosen {
+  color: #fff;
+  text-shadow:
+    3px 3px 0 #33184a,
+    -3px 3px 0 #33184a,
+    3px -3px 0 #33184a,
+    -3px -3px 0 #33184a,
+    0 0 20px rgba(20, 8, 34, 0.6);
 }
