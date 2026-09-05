@@ -42,3 +42,6 @@ next-env.d.ts
 
 # picked dates saved by the api route
 /data
+
+# keep the documented template, ignore the real secrets
+!.env.example
