@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Script from "next/script";
 import styles from "./page.module.css";
+
+/* ---------- ambient hearts (drift up the whole time) ---------- */
 
 type Heart = {
   src: string;
@@ -26,7 +27,10 @@ const HEARTS: Heart[] = [
   { src: "/heart-soft.png", x: "92%", size: "32px", dur: "20s", delay: "2.5s", drift: "-14px", top: "70%" },
 ];
 
-const TRAIL_SRC = ["/heart-pink.png", "/heart-soft.png", "/heart-white.png"];
+const SPRITES = ["/heart-pink.png", "/heart-soft.png", "/heart-white.png"];
+
+/* ---------- pointer trail ---------- */
+
 const TRAIL_LIFETIME = 1100; // ms a trail heart stays alive
 const TRAIL_GAP = 45; // ms between spawns
 const TRAIL_MIN_DIST = 22; // px the pointer must travel before the next heart
@@ -34,17 +38,184 @@ const TRAIL_MAX = 26;
 
 type TrailHeart = { id: number; x: number; y: number; src: string; size: number; tilt: number };
 
+/* ---------- the flood that covers the screen after YES ---------- */
+
+const FLOOD_COLS = 11;
+const FLOOD_ROWS = 8;
+const FLOOD_SWAP = 950; // ms: swap the content hidden behind the hearts
+const FLOOD_END = 1850; // ms: hearts are gone, overlay unmounts
+
+/** Deterministic PRNG so the flood scatter is identical on every render. */
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type FloodHeart = {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  tilt: number;
+  delay: number;
+  out: number;
+};
+
+const FLOOD: FloodHeart[] = (() => {
+  const rand = mulberry32(20260905);
+  const hearts: FloodHeart[] = [];
+  let id = 0;
+  for (let row = 0; row < FLOOD_ROWS; row++) {
+    for (let col = 0; col < FLOOD_COLS; col++) {
+      const x = (col + 0.5) / FLOOD_COLS + (rand() - 0.5) * (0.7 / FLOOD_COLS);
+      const y = (row + 0.5) / FLOOD_ROWS + (rand() - 0.5) * (0.7 / FLOOD_ROWS);
+      // Bloom outwards from the middle of the screen, drain back the same way.
+      const dist = Math.min(1, Math.hypot(x - 0.5, y - 0.5) / 0.72);
+      hearts.push({
+        id: id++,
+        x: Math.round(x * 1000) / 10,
+        y: Math.round(y * 1000) / 10,
+        size: 13 + Math.round(rand() * 100) / 10,
+        tilt: Math.round((rand() - 0.5) * 50),
+        delay: Math.round(dist * 420),
+        out: FLOOD_SWAP + 60 + Math.round((1 - dist) * 260),
+      });
+    }
+  }
+  return hearts;
+})();
+
+/* ---------- Tenor ---------- */
+
+type GifProps = {
+  postId: string;
+  aspectRatio: number;
+  href: string;
+  label: string;
+  searchHref: string;
+  searchLabel: string;
+};
+
+/**
+ * tenor.com/embed.js only scans the DOM at the moment it runs, so a gif that
+ * mounts later (the second screen) needs its own copy of the script. Embeds it
+ * has already built carry data-processed="true" and get skipped, so re-running
+ * it is safe.
+ */
+function TenorGif({ postId, aspectRatio, href, label, searchHref, searchLabel }: GifProps) {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://tenor.com/embed.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => script.remove();
+  }, [postId]);
+
+  return (
+    <div className={styles.frame}>
+      <div className={styles.frameInner} style={{ aspectRatio: `${aspectRatio} / 1` }}>
+        <div
+          className="tenor-gif-embed"
+          data-postid={postId}
+          data-share-method="host"
+          data-aspect-ratio={aspectRatio}
+          data-width="100%"
+        >
+          <a href={href}>{label}</a>from <a href={searchHref}>{searchLabel}</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- page ---------- */
+
 const GROWTH = 1.35;
 const MAX_SCALE = 9;
 
+type Phase = "ask" | "date" | "done";
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+const TODAY = new Date().toISOString().slice(0, 10);
+const STORAGE_KEY = "save-the-date:pick";
+
+function formatDate(value: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function Home() {
   const [scale, setScale] = useState(1);
-  const [accepted, setAccepted] = useState(false);
+  const [phase, setPhase] = useState<Phase>("ask");
+  const [flooding, setFlooding] = useState(false);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveError, setSaveError] = useState("");
   const [trail, setTrail] = useState<TrailHeart[]>([]);
 
   const lastSpawn = useRef({ t: 0, x: 0, y: 0 });
   const nextId = useRef(0);
 
+  const canConfirm = Boolean(from && to && to >= from);
+
+  /* keep the draft around so a refresh does not lose it */
+  useEffect(() => {
+    if (!from && !to) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to }));
+    } catch {
+      // ignore: a missing draft is not worth breaking the page over
+    }
+  }, [from, to]);
+
+  /** Swap screens behind the heart flood, so the change is never seen. */
+  function transitionTo(next: Phase) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPhase(next);
+      return;
+    }
+
+    setFlooding(true);
+    window.setTimeout(() => setPhase(next), FLOOD_SWAP);
+    window.setTimeout(() => setFlooding(false), FLOOD_END);
+  }
+
+  async function saveDates() {
+    if (!canConfirm || saveState === "saving" || flooding) return;
+
+    setSaveState("saving");
+    setSaveError("");
+
+    try {
+      const response = await fetch("/api/pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `Could not save (${response.status}).`);
+      }
+
+      setSaveState("saved");
+      transitionTo("done");
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save.");
+      setSaveState("error");
+    }
+  }
+
+  /* hearts that follow the cursor */
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
@@ -62,7 +233,7 @@ export default function Home() {
         id,
         x: event.clientX,
         y: event.clientY,
-        src: TRAIL_SRC[id % TRAIL_SRC.length],
+        src: SPRITES[id % SPRITES.length],
         size: 22 + (id % 3) * 7,
         tilt: ((id % 5) - 2) * 9,
       };
@@ -83,8 +254,29 @@ export default function Home() {
     };
   }, []);
 
+  function acceptInvite() {
+    if (phase !== "ask" || flooding) return;
+
+    /* bring back whatever was picked last time on this device */
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { from?: unknown; to?: unknown };
+        if (typeof saved.from === "string") setFrom(saved.from);
+        if (typeof saved.to === "string") setTo(saved.to);
+      }
+    } catch {
+      // storage blocked or holding junk — just start empty
+    }
+
+    transitionTo("date");
+  }
+
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${phase === "ask" ? "" : styles.pageLondon}`}>
+      {/* React hoists this to <head>, so London is cached before the flood clears. */}
+      <link rel="preload" as="image" href="/bg-london.png" />
+
       <div className={styles.hearts} aria-hidden="true">
         {HEARTS.map((heart, i) => (
           // eslint-disable-next-line @next/next/no-img-element -- 16x16 pixel sprites; next/image would add overhead for a 148-byte decorative asset
@@ -128,48 +320,146 @@ export default function Home() {
         ))}
       </div>
 
-      <div className={styles.frame}>
-        <div className={styles.frameInner}>
-          <div
-            className="tenor-gif-embed"
-            data-postid="17843851"
-            data-share-method="host"
-            data-aspect-ratio="1.02894"
-            data-width="100%"
-          >
-            <a href="https://tenor.com/view/mochi-mochi-peach-cat-kitty-chibi-cute-gif-17843851">
-              Mochi Mochi Peach Cat Sticker
-            </a>
-            from <a href="https://tenor.com/search/mochi+mochi-stickers">Mochi Mochi Stickers</a>
+      {phase === "done" ? (
+        <div className={styles.stage} key="done">
+          <TenorGif
+            postId="473400531468754187"
+            aspectRatio={1.15476}
+            href="https://tenor.com/view/jump-peach-goma-peach-and-goma-peach-goma-gif-473400531468754187"
+            label="Jump Peach Goma GIF"
+            searchHref="https://tenor.com/search/jump-gifs"
+            searchLabel="Jump GIFs"
+          />
+
+          <h1 className={styles.title}>It&rsquo;s a date!</h1>
+
+          <p className={styles.chosen}>
+            {formatDate(from)} &rarr; {formatDate(to)}
+          </p>
+        </div>
+      ) : phase === "date" ? (
+        <div className={styles.stage} key="date">
+          <TenorGif
+            postId="473400531468754187"
+            aspectRatio={1.15476}
+            href="https://tenor.com/view/jump-peach-goma-peach-and-goma-peach-goma-gif-473400531468754187"
+            label="Jump Peach Goma GIF"
+            searchHref="https://tenor.com/search/jump-gifs"
+            searchLabel="Jump GIFs"
+          />
+
+          <h1 className={styles.title}>We&rsquo;re going to London!</h1>
+
+          <div className={styles.pickRow}>
+            <p className={styles.pickLabel}>pick the date!</p>
+
+            <div className={styles.dateFields}>
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="from">
+                  from
+                </label>
+                <input
+                  id="from"
+                  type="date"
+                  className={styles.dateInput}
+                  value={from}
+                  min={TODAY}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setFrom(next);
+                    setSaveState("idle");
+                    // Never leave the range inside out.
+                    if (to && next && to < next) setTo(next);
+                  }}
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="to">
+                  to
+                </label>
+                <input
+                  id="to"
+                  type="date"
+                  className={styles.dateInput}
+                  value={to}
+                  min={from || TODAY}
+                  onChange={(event) => {
+                    setTo(event.target.value);
+                    setSaveState("idle");
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.save}`}
+              onClick={saveDates}
+              disabled={!canConfirm || saveState === "saving"}
+            >
+              {saveState === "saving" ? "SAVING…" : "SAVE"}
+            </button>
+
+            {saveState === "error" ? <p className={styles.error}>{saveError}</p> : null}
           </div>
         </div>
-      </div>
-
-      <h1 className={styles.title}>Honey, would you like to go to London with me?</h1>
-
-      {accepted ? (
-        <p className={styles.yay}>Yay! London, here we come!</p>
       ) : (
-        <div className={styles.buttons}>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.yes}`}
-            style={{ "--scale": scale } as React.CSSProperties}
-            onClick={() => setAccepted(true)}
-          >
-            YES
-          </button>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.no}`}
-            onClick={() => setScale((s) => Math.min(s * GROWTH, MAX_SCALE))}
-          >
-            NO
-          </button>
+        <div className={styles.stage} key="ask">
+          <TenorGif
+            postId="17843851"
+            aspectRatio={1.02894}
+            href="https://tenor.com/view/mochi-mochi-peach-cat-kitty-chibi-cute-gif-17843851"
+            label="Mochi Mochi Peach Cat Sticker"
+            searchHref="https://tenor.com/search/mochi+mochi-stickers"
+            searchLabel="Mochi Mochi Stickers"
+          />
+
+          <h1 className={styles.title}>Honey, would you like to go to London with me?</h1>
+
+          <div className={styles.buttons}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.yes}`}
+              style={{ "--scale": scale } as React.CSSProperties}
+              onClick={acceptInvite}
+            >
+              YES
+            </button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.no}`}
+              onClick={() => setScale((s) => Math.min(s * GROWTH, MAX_SCALE))}
+            >
+              NO
+            </button>
+          </div>
         </div>
       )}
 
-      <Script src="https://tenor.com/embed.js" strategy="afterInteractive" />
+      {flooding ? (
+        <div className={styles.flood} aria-hidden="true">
+          {FLOOD.map((heart) => (
+            // eslint-disable-next-line @next/next/no-img-element -- same 16x16 sprite, blown up to flood the screen
+            <img
+              key={heart.id}
+              src={SPRITES[heart.id % SPRITES.length]}
+              alt=""
+              className={styles.floodHeart}
+              style={
+                {
+                  "--x": `${heart.x}%`,
+                  "--y": `${heart.y}%`,
+                  "--size": `${heart.size}vmin`,
+                  "--tilt": `${heart.tilt}deg`,
+                  "--delay": `${heart.delay}ms`,
+                  "--out": `${heart.out}ms`,
+                } as React.CSSProperties
+              }
+            />
+          ))}
+        </div>
+      ) : null}
     </main>
   );
 }

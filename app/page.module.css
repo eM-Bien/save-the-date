@@ -5,10 +5,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: clamp(20px, 4vh, 40px);
+  justify-content: flex-start;
   padding: clamp(20px, 5vw, 48px) 20px;
-  overflow: hidden;
   background-image: url("/bg-sky.png");
   background-size: cover;
   background-position: center;
@@ -16,7 +14,37 @@
   image-rendering: pixelated;
 }
 
-/* --- floating hearts --- */
+/* Second screen: pink London, dimmed so the text on top stays readable
+   against the busy pink skyline. */
+.pageLondon {
+  background-image: linear-gradient(rgba(58, 28, 58, 0.32), rgba(58, 28, 58, 0.32)), url("/bg-london.png");
+}
+
+/* The swappable screen: question first, then the date picker. */
+.stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vh, 40px);
+  margin: auto 0;
+  animation: reveal 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- ambient hearts --- */
 
 .hearts {
   position: absolute;
@@ -62,7 +90,7 @@
 .frame {
   position: relative;
   z-index: 1;
-  width: min(280px, 62vw);
+  width: min(380px, 74vw);
   padding: 10px;
   background: var(--cream);
   border: 4px solid var(--pink);
@@ -87,11 +115,9 @@
 /* --- question --- */
 
 .title {
-  position: relative;
-  z-index: 1;
   max-width: 22ch;
   text-align: center;
-  font-size: clamp(0.8rem, 2.1vw, 1.4rem);
+  font-size: clamp(1rem, 2.8vw, 1.9rem);
   line-height: 2;
   color: var(--plum);
   text-shadow:
@@ -105,8 +131,6 @@
 /* --- buttons --- */
 
 .buttons {
-  position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,11 +156,6 @@
   transform: scale(var(--scale));
 }
 
-.yes:active {
-  transform: scale(var(--scale)) translateY(4px);
-  box-shadow: 0 2px 0 var(--pink-dark);
-}
-
 .no {
   background: #b9c7d6;
   border-color: #7f91a3;
@@ -153,90 +172,6 @@
   outline-offset: 4px;
 }
 
-/* --- celebration --- */
-
-.yay {
-  position: relative;
-  z-index: 1;
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  text-align: center;
-  font-size: clamp(0.85rem, 2vw, 1.3rem);
-  line-height: 1.9;
-  color: var(--pink-dark);
-  text-shadow:
-    2px 2px 0 #fff,
-    -2px 2px 0 #fff,
-    2px -2px 0 #fff,
-    -2px -2px 0 #fff;
-  animation: pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes pop {
-  from {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .heart {
-    animation-duration: 0s;
-    animation-iteration-count: 1;
-    opacity: 0.6;
-    bottom: auto;
-    top: var(--top, 20%);
-  }
-
-  .btn,
-  .yay {
-    transition: none;
-    animation: none;
-  }
-}
-
-/* --- pointer trail --- */
-
-.trail {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 5;
-}
-
-.trailHeart {
-  position: absolute;
-  width: var(--size);
-  height: auto;
-  margin: 0;
-  image-rendering: pixelated;
-  will-change: transform, opacity;
-  animation: trailFloat var(--life) ease-out forwards;
-}
-
-@keyframes trailFloat {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.35) rotate(var(--tilt));
-  }
-  20% {
-    opacity: 1;
-    transform: translate(-50%, -60%) scale(1) rotate(var(--tilt));
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -135%) scale(0.6) rotate(var(--tilt));
-  }
-}
-
-/* --- button hover --- */
-
 .yes:hover {
   background: #ff96c0;
   box-shadow:
@@ -248,6 +183,7 @@
 
 .yes:active {
   transform: scale(var(--scale)) translateY(4px);
+  box-shadow: 0 2px 0 var(--pink-dark);
 }
 
 .no:hover {
@@ -268,7 +204,250 @@
   }
 }
 
+/* --- pointer trail --- */
+
+.trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.trailHeart {
+  position: absolute;
+  width: var(--size);
+  height: auto;
+  image-rendering: pixelated;
+  will-change: transform, opacity;
+  animation: trailFloat var(--life) ease-out forwards;
+}
+
+@keyframes trailFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35) rotate(var(--tilt));
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -60%) scale(1) rotate(var(--tilt));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -135%) scale(0.6) rotate(var(--tilt));
+  }
+}
+
+/* --- the flood after YES --- */
+
+.flood {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 20;
+  /* A pink wash behind the hearts, so the screen swap underneath is never
+     visible through the gaps between them. */
+  background-color: rgba(255, 190, 218, 0);
+  animation: veil 1850ms linear forwards;
+}
+
+@keyframes veil {
+  0% {
+    background-color: rgba(255, 190, 218, 0);
+  }
+  40% {
+    background-color: rgba(255, 190, 218, 0.97);
+  }
+  62% {
+    background-color: rgba(255, 190, 218, 0.97);
+  }
+  100% {
+    background-color: rgba(255, 190, 218, 0);
+  }
+}
+
+.floodHeart {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: auto;
+  image-rendering: pixelated;
+  will-change: transform, opacity;
+  transform: translate(-50%, -50%) scale(0) rotate(var(--tilt));
+  /* Two animations on different properties: pop in, then fade back out. */
+  animation:
+    floodPop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--delay) forwards,
+    floodFade 620ms ease-in var(--out) forwards;
+}
+
+@keyframes floodPop {
+  from {
+    transform: translate(-50%, -50%) scale(0) rotate(var(--tilt));
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1) rotate(var(--tilt));
+  }
+}
+
+@keyframes floodFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* --- date picker --- */
+
+.pickRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.dateFields {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 28px);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-size: clamp(0.65rem, 1.3vw, 0.9rem);
+  color: var(--plum);
+  text-shadow:
+    2px 2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px -2px 0 #fff;
+}
+
+.save {
+  background: var(--pink);
+  box-shadow: 0 6px 0 var(--pink-dark);
+}
+
+.save:hover:not(:disabled) {
+  background: #ff96c0;
+  transform: translateY(-3px);
+  box-shadow:
+    0 6px 0 var(--pink-dark),
+    0 0 0 4px rgba(255, 255, 255, 0.65),
+    0 10px 24px rgba(209, 71, 126, 0.4);
+}
+
+.save:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--pink-dark);
+}
+
+.save:disabled {
+  background: #d5c2cd;
+  border-color: #a08e9a;
+  box-shadow: 0 6px 0 #a08e9a;
+  cursor: not-allowed;
+}
+
+.error {
+  max-width: 26ch;
+  text-align: center;
+  font-size: clamp(0.6rem, 1.2vw, 0.8rem);
+  line-height: 1.9;
+  color: #b03050;
+  text-shadow:
+    2px 2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px -2px 0 #fff;
+}
+
+.pickLabel {
+  font-size: clamp(0.95rem, 2.2vw, 1.45rem);
+  /* extra breathing room between the heading and the two date fields */
+  margin-bottom: clamp(16px, 3vh, 30px);
+  color: var(--plum);
+  text-shadow:
+    2px 2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px -2px 0 #fff;
+}
+
+.dateInput {
+  font: inherit;
+  font-size: clamp(0.65rem, 1.4vw, 0.9rem);
+  color: var(--plum);
+  background: var(--cream);
+  padding: 14px 16px;
+  border: 4px solid var(--pink-dark);
+  box-shadow: 0 6px 0 var(--pink-dark);
+  cursor: pointer;
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dateInput:hover {
+  background: #fff;
+  transform: translateY(-3px);
+  box-shadow:
+    0 6px 0 var(--pink-dark),
+    0 10px 20px rgba(209, 71, 126, 0.3);
+}
+
+.dateInput:focus-visible {
+  outline: 4px solid var(--pink);
+  outline-offset: 4px;
+}
+
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 2px;
+  margin-left: 8px;
+  transform: scale(1.2);
+}
+
+.chosen {
+  text-align: center;
+  font-size: clamp(0.85rem, 1.9vw, 1.25rem);
+  line-height: 2;
+  color: var(--plum);
+  text-shadow:
+    2px 2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px -2px 0 #fff;
+  animation: reveal 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .heart {
+    animation-duration: 0s;
+    animation-iteration-count: 1;
+    opacity: 0.6;
+    bottom: auto;
+    top: var(--top, 20%);
+  }
+
+  .stage,
+  .chosen {
+    animation: none;
+  }
+
+  .btn,
+  .dateInput {
+    transition: none;
+  }
+
   .trailHeart {
     animation: none;
     opacity: 0;
@@ -281,5 +460,9 @@
 
   .yes:hover {
     transform: scale(var(--scale));
+  }
+
+  .dateInput:hover {
+    transform: none;
   }
 }
