@@ -199,3 +199,87 @@
     animation: none;
   }
 }
+
+/* --- pointer trail --- */
+
+.trail {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.trailHeart {
+  position: absolute;
+  width: var(--size);
+  height: auto;
+  margin: 0;
+  image-rendering: pixelated;
+  will-change: transform, opacity;
+  animation: trailFloat var(--life) ease-out forwards;
+}
+
+@keyframes trailFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35) rotate(var(--tilt));
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -60%) scale(1) rotate(var(--tilt));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -135%) scale(0.6) rotate(var(--tilt));
+  }
+}
+
+/* --- button hover --- */
+
+.yes:hover {
+  background: #ff96c0;
+  box-shadow:
+    0 6px 0 var(--pink-dark),
+    0 0 0 4px rgba(255, 255, 255, 0.65),
+    0 10px 24px rgba(209, 71, 126, 0.4);
+  transform: scale(calc(var(--scale) * 1.07)) translateY(-3px);
+}
+
+.yes:active {
+  transform: scale(var(--scale)) translateY(4px);
+}
+
+.no:hover {
+  background: #c9d6e3;
+  box-shadow:
+    0 6px 0 #7f91a3,
+    0 10px 20px rgba(90, 110, 130, 0.3);
+  animation: wiggle 420ms ease-in-out infinite;
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: translateY(-3px) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2.5deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trailHeart {
+    animation: none;
+    opacity: 0;
+  }
+
+  .no:hover {
+    animation: none;
+    transform: translateY(-3px);
+  }
+
+  .yes:hover {
+    transform: scale(var(--scale));
+  }
+}
