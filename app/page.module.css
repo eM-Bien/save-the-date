@@ -22,7 +22,7 @@
 
 /* third screen: packing for the trip */
 .pageDone {
-  background-image: linear-gradient(rgba(40, 30, 70, 0.42), rgba(40, 30, 70, 0.42)), url("/bg-packing.png");
+  background-image: linear-gradient(rgba(40, 30, 70, 0.32), rgba(40, 30, 70, 0.32)), url("/bg-packing.png");
 }
 
 /* The swappable screen: question first, then the date picker. */
@@ -483,4 +483,79 @@
     3px -3px 0 #33184a,
     -3px -3px 0 #33184a,
     0 0 20px rgba(20, 8, 34, 0.6);
+}
+
+/* --- the closing line, letter by letter --- */
+
+.bigTitle {
+  max-width: none;
+  font-size: clamp(1.5rem, 6.2vw, 3.6rem);
+  line-height: 1.5;
+  /* the letters rotate, so give them room not to collide */
+  letter-spacing: 0.06em;
+  /* A slow pink pulse around the whole line. Separate from the per-letter
+     transforms, so the two never fight over the same property. */
+  animation: titleGlow 2.4s ease-in-out infinite;
+}
+
+.word {
+  display: inline-block;
+  margin-right: 0.5em;
+}
+
+.word:last-child {
+  margin-right: 0;
+}
+
+.letter {
+  display: inline-block;
+  /* letterIn holds its end state (both); letterWave has no backwards fill, so
+     it stays out of the way until its delay is up. */
+  animation:
+    letterIn 560ms cubic-bezier(0.2, 1.7, 0.5, 1) calc(var(--i) * 70ms) both,
+    letterWave 1.5s ease-in-out calc(1100ms + var(--i) * 120ms) infinite;
+}
+
+@keyframes letterIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-70px) scale(0.3) rotate(-20deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(8px) scale(1.18) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Pure up-and-down. Sized in em so it scales with the clamped font, and
+   staggered per letter so the line ripples instead of moving as a block. */
+@keyframes letterWave {
+  0%,
+  100% {
+    transform: translateY(0.16em);
+  }
+  50% {
+    transform: translateY(-0.4em);
+  }
+}
+
+@keyframes titleGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(255, 138, 190, 0.65));
+  }
+  50% {
+    filter: drop-shadow(0 0 28px rgba(255, 138, 190, 1));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bigTitle,
+  .letter {
+    animation: none;
+  }
 }

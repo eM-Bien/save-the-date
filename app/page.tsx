@@ -133,6 +133,34 @@ function TenorGif({ postId, aspectRatio, href, label, searchHref, searchLabel }:
   );
 }
 
+/**
+ * The closing line, one <span> per letter: each drops in on a stagger and then
+ * keeps bobbing. Letters are hidden from screen readers; the heading carries
+ * the whole string via aria-label.
+ */
+function BigTitle({ text }: { text: string }) {
+  let index = 0;
+
+  return (
+    <h1 className={`${styles.title} ${styles.bigTitle}`} aria-label={text}>
+      {text.split(" ").map((word, w) => (
+        <span key={w} className={styles.word}>
+          {[...word].map((character, c) => (
+            <span
+              key={c}
+              className={styles.letter}
+              style={{ "--i": index++ } as React.CSSProperties}
+              aria-hidden="true"
+            >
+              {character}
+            </span>
+          ))}
+        </span>
+      ))}
+    </h1>
+  );
+}
+
 /* ---------- page ---------- */
 
 const GROWTH = 1.35;
@@ -339,7 +367,7 @@ export default function Home() {
             searchLabel="Peach And Goma GIFs"
           />
 
-          <h1 className={styles.title}>It&rsquo;s a date!</h1>
+          <BigTitle text="It’s a date!" />
 
           <p className={styles.chosen}>
             {formatDate(from)} &rarr; {formatDate(to)}
